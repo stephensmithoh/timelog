@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Time Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --border: #2e3248;
+    --accent: #f0c040;
+    --accent2: #4fd1c5;
+    --text: #e8eaf0;
+    --muted: #6b7099;
+    --danger: #f06060;
+    --success: #60c080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  #clock {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 20px 16px 100px;
+  }
+
+  /* ── REMINDER BANNER ── */
+  #reminder-banner {
+    display: none;
+    background: var(--accent);
+    color: #111;
+    text-align: center;
+    padding: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    animation: pulse 1s ease-in-out infinite alternate;
+    position: sticky;
+    top: 57px;
+    z-index: 99;
+  }
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.7; } }
+
+  /* ── SECTIONS ── */
+  section { margin-bottom: 24px; }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* ── REPEAT BUTTON ── */
+  #repeat-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--accent);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.15s, transform 0.1s;
+    margin-bottom: 24px;
+  }
+  #repeat-btn:active { transform: scale(0.98); }
+  #repeat-btn:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  #repeat-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 300px;
+  }
+
+  /* ── ACTIVITY GRID ── */
+  #activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .activity-btn {
+    padding: 14px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .activity-btn:active { transform: scale(0.97); }
+  .activity-btn:hover { border-color: var(--accent2); background: var(--surface2); }
+  .activity-btn .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── CUSTOM ACTIVITY ── */
+  #custom-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  #custom-input {
+    flex: 1;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  #custom-input:focus { border-color: var(--accent2); }
+  #custom-input::placeholder { color: var(--muted); }
+  #custom-log-btn {
+    padding: 12px 18px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+  }
+  #custom-log-btn:hover { border-color: var(--accent2); }
+
+  /* ── FLASH FEEDBACK ── */
+  #flash {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: var(--success);
+    color: #111;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 12px 24px;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 999;
+    text-align: center;
+    max-width: 260px;
+  }
+  #flash.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* ── LOG TABLE ── */
+  #log-section { margin-top: 8px; }
+
+  #log-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+  }
+
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    position: sticky;
+    top: 0;
+  }
+
+  td {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+
+  tr:hover td { background: var(--surface2); }
+
+  .td-time { color: var(--accent2); white-space: nowrap; }
+  .td-activity { font-family: 'IBM Plex Sans', sans-serif; }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 4px;
+    line-height: 1;
+  }
+  .delete-btn:hover { color: var(--danger); }
+
+  #empty-log {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── SUMMARY ── */
+  #summary-grid {
+    display: grid;
+    gap: 8px;
+  }
+
+  .summary-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+
+  .summary-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .summary-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .summary-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .summary-bar-wrap {
+    width: 80px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .summary-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── ACTIONS ── */
+  #actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── MANAGE CATEGORIES ── */
+  #manage-section { display: none; }
+  #manage-section.open { display: block; }
+
+  #cat-list { margin-bottom: 12px; }
+
+  .cat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cat-color-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .cat-name-text { flex: 1; font-size: 0.9rem; }
+
+  .cat-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .cat-del:hover { color: var(--danger); }
+
+  #add-cat-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  #new-cat-input {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  #new-cat-input:focus { border-color: var(--accent2); }
+  #new-cat-input::placeholder { color: var(--muted); }
+
+  #add-cat-btn {
+    padding: 10px 16px;
+    background: var(--accent2);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  #manage-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 4px 0;
+    text-decoration: underline;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 10px;
+  }
+  #manage-toggle:hover { color: var(--accent2); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⏱ Time Log</h1>
+  <div id="clock">00:00:00</div>
+</header>
+
+<div id="reminder-banner">⏰ 15 MINUTES — LOG YOUR ACTIVITY</div>
+
+<div id="flash"></div>
+
+<main>
+
+  <!-- REPEAT -->
+  <button id="repeat-btn" disabled>
+    <span>↺</span>
+    <span id="repeat-label">No previous entry</span>
+  </button>
+
+  <!-- ACTIVITIES -->
+  <section>
+    <div class="section-label">Log Activity</div>
+    <button id="manage-toggle" onclick="toggleManage()">✎ manage categories</button>
+
+    <!-- Manage categories panel -->
+    <div id="manage-section">
+      <div id="cat-list"></div>
+      <div id="add-cat-row">
+        <input id="new-cat-input" type="text" placeholder="New category name…" maxlength="40">
+        <button id="add-cat-btn" onclick="addCategory()">+ Add</button>
+      </div>
+      <br>
+    </div>
+
+    <div id="activity-grid"></div>
+
+    <div id="custom-row">
+      <input id="custom-input" type="text" placeholder="Other / free text…" maxlength="60">
+      <button id="custom-log-btn" onclick="logCustom()">Log</button>
+    </div>
+  </section>
+
+  <!-- TODAY'S LOG -->
+  <section id="log-section">
+    <div class="section-label">Today's Log</div>
+    <div id="log-table-wrap">
+      <div id="empty-log">No entries yet — start logging</div>
+      <table id="log-table" style="display:none">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Activity</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SUMMARY -->
+  <section id="summary-section">
+    <div class="section-label">Time Allocation</div>
+    <div id="summary-grid"><div style="color:var(--muted);font-size:0.85rem;font-family:'IBM Plex Mono',monospace">No data yet</div></div>
+  </section>
+
+  <!-- ACTIONS -->
+  <section>
+    <div class="section-label">Actions</div>
+    <div id="actions">
+      <button class="action-btn" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="action-btn" id="clear-btn" onclick="clearLog()">✕ Clear Log</button>
+    </div>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+      <button class="action-btn" id="notif-btn" onclick="requestNotifPermission()" style="flex:none;width:100%;">🔔 Enable Notifications</button>
+      <div id="notif-info" style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--muted);padding:0 2px;">Enable to get alerts when other tabs are open.</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── DEFAULT CATEGORIES ──
+const CATEGORY_COLORS = [
+  '#f0c040','#4fd1c5','#f06090','#80c0ff','#a0e080',
+  '#e0a0f0','#f0a060','#60d0e0','#f08080','#b0b0f0'
+];
+
+let categories = JSON.parse(localStorage.getItem('ts_categories') || 'null') || [
+  'Site Visit / Fieldwork',
+  'Report Writing',
+  'Travel',
+  'Client Calls',
+  'Admin / Email',
+  'Quoting / Proposals',
+  'Meetings',
+  'CPD / Training'
+];
+
+let log = JSON.parse(localStorage.getItem('ts_log') || '[]');
+let lastEntry = localStorage.getItem('ts_last') || null;
+let reminderTimer = null;
+
+function save() {
+  localStorage.setItem('ts_categories', JSON.stringify(categories));
+  localStorage.setItem('ts_log', JSON.stringify(log));
+  if (lastEntry) localStorage.setItem('ts_last', lastEntry);
+}
+
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0,8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── QUARTER-CLOCK HELPERS ──
+// Returns the most recent clock-quarter time as a Date
+function lastQuarter(d) {
+  const q = new Date(d);
+  q.setMinutes(Math.floor(d.getMinutes() / 15) * 15, 0, 0);
+  return q;
+}
+
+// Returns the next clock-quarter time as a Date
+function nextQuarter(d) {
+  const q = new Date(d);
+  q.setMinutes(Math.ceil((d.getMinutes() * 60 + d.getSeconds() + 1) / (15 * 60)) * 15, 0, 0);
+  return q;
+}
+
+// Format a Date as HH:MM
+function fmtTime(d) {
+  return d.toTimeString().slice(0, 5);
+}
+
+// Milliseconds until next clock quarter
+function msUntilNextQuarter() {
+  const now = new Date();
+  return nextQuarter(now) - now;
+}
+
+// ── NOTIFICATION PERMISSION ──
+let notifGranted = false;
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    updateNotifStatus('not-supported');
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    notifGranted = true;
+    updateNotifStatus('granted');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    updateNotifStatus('denied');
+    return;
+  }
+  const result = await Notification.requestPermission();
+  notifGranted = result === 'granted';
+  updateNotifStatus(result);
+}
+
+function updateNotifStatus(status) {
+  const btn = document.getElementById('notif-btn');
+  const info = document.getElementById('notif-info');
+  if (status === 'granted') {
+    btn.textContent = '🔔 Notifications ON';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+    info.textContent = 'Tap the notification to jump back to this tab.';
+    info.style.color = 'var(--muted)';
+  } else if (status === 'denied') {
+    btn.textContent = '🔕 Notifications blocked';
+    btn.style.borderColor = 'var(--danger)';
+    btn.style.color = 'var(--danger)';
+    info.textContent = 'Blocked in browser settings — use a phone alarm at :00/:15/:30/:45 instead.';
+    info.style.color = 'var(--danger)';
+  } else if (status === 'not-supported') {
+    btn.textContent = '🔕 Not supported';
+    btn.style.borderColor = 'var(--muted)';
+    btn.style.color = 'var(--muted)';
+    info.textContent = 'This browser does not support notifications.';
+  } else {
+    btn.textContent = '🔔 Enable Notifications';
+  }
+}
+
+// ── REMINDER (fires exactly on clock quarters) ──
+function scheduleReminder() {
+  setTimeout(() => {
+    showReminder();
+    scheduleReminder();
+  }, msUntilNextQuarter());
+}
+
+function showReminder() {
+  const now = new Date();
+  const timeLabel = fmtTime(now);
+
+  // In-tab banner (always shown when tab is visible)
+  const banner = document.getElementById('reminder-banner');
+  banner.style.display = 'block';
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  setTimeout(() => { banner.style.display = 'none'; }, 30000);
+
+  // OS-level browser notification (works when tab is in background)
+  if (notifGranted && Notification.permission === 'granted') {
+    const n = new Notification('⏱ Time Log', {
+      body: `${timeLabel} — tap to log your activity`,
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="%23f0c040"/><text x="32" y="42" text-anchor="middle" font-size="32">⏱</text></svg>',
+      tag: 'timelog-reminder', // replaces previous notification rather than stacking
+      renotify: true,
+      requireInteraction: false
+    });
+    // Clicking the notification focuses this tab
+    n.onclick = () => { window.focus(); n.close(); };
+  }
+}
+
+scheduleReminder();
+
+// Check existing permission state on load
+if ('Notification' in window && Notification.permission === 'granted') {
+  notifGranted = true;
+}
+
+// ── RENDER CATEGORY BUTTONS ──
+function renderGrid() {
+  const grid = document.getElementById('activity-grid');
+  grid.innerHTML = '';
+  categories.forEach((cat, i) => {
+    const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+    const btn = document.createElement('button');
+    btn.className = 'activity-btn';
+    btn.innerHTML = `<span class="dot" style="background:${color}"></span>${cat}`;
+    btn.onclick = () => logActivity(cat, color);
+    grid.appendChild(btn);
+  });
+}
+
+// ── MANAGE CATEGORIES ──
+function renderCatList() {
+  const list = document.getElementById('cat-list');
+  list.innerHTML = '';
+  categories.forEach((cat, i) => {
+    const color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'cat-item';
+    row.innerHTML = `
+      <span class="cat-color-dot" style="background:${color}"></span>
+      <span class="cat-name-text">${cat}</span>
+      <button class="cat-del" onclick="deleteCategory(${i})">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function toggleManage() {
+  const sec = document.getElementById('manage-section');
+  const btn = document.getElementById('manage-toggle');
+  if (sec.classList.contains('open')) {
+    sec.classList.remove('open');
+    btn.textContent = '✎ manage categories';
+  } else {
+    sec.classList.add('open');
+    renderCatList();
+    btn.textContent = '✕ close';
+  }
+}
+
+function addCategory() {
+  const input = document.getElementById('new-cat-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (categories.includes(name)) { input.value = ''; return; }
+  categories.push(name);
+  input.value = '';
+  save();
+  renderGrid();
+  renderCatList();
+}
+
+function deleteCategory(i) {
+  if (categories.length <= 1) return;
+  categories.splice(i, 1);
+  save();
+  renderGrid();
+  renderCatList();
+}
+
+document.getElementById('new-cat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCategory();
+});
+
+// ── LOG AN ACTIVITY ──
+function logActivity(name, color) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB');
+
+  const lq = lastQuarter(now);
+  const secsIntoSlot = (now - lq) / 1000;
+  const isNearQuarter = secsIntoSlot < 5;
+
+  let timeStr, note;
+  if (isNearQuarter) {
+    timeStr = fmtTime(lq);
+    note = '';
+  } else {
+    timeStr = fmtTime(lq);
+    const actualStart = fmtTime(now);
+    const minsRemaining = Math.round((nextQuarter(now) - now) / 60000);
+    note = `started ${actualStart}, ~${minsRemaining}m in slot`;
+  }
+
+  const entry = { date: dateStr, time: timeStr, activity: name, color: color || '#888', note };
+  log.push(entry);
+  lastEntry = name;
+
+  // Update repeat button
+  const repeatBtn = document.getElementById('repeat-btn');
+  document.getElementById('repeat-label').textContent = `Repeat: ${name}`;
+  repeatBtn.disabled = false;
+  repeatBtn.onclick = () => logActivity(lastEntry, getColorForActivity(lastEntry));
+
+  save();
+  renderLog();
+  renderSummary();
+  showFlash(name);
+
+  // Dismiss reminder banner
+  document.getElementById('reminder-banner').style.display = 'none';
+}
+
+function getColorForActivity(name) {
+  const i = categories.indexOf(name);
+  if (i >= 0) return CATEGORY_COLORS[i % CATEGORY_COLORS.length];
+  return '#aaa';
+}
+
+function logCustom() {
+  const input = document.getElementById('custom-input');
+  const val = input.value.trim();
+  if (!val) return;
+  logActivity(val, '#aaaaaa');
+  input.value = '';
+}
+
+document.getElementById('custom-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') logCustom();
+});
+
+// ── FLASH FEEDBACK ──
+function showFlash(name) {
+  const flash = document.getElementById('flash');
+  flash.textContent = '✓ ' + name;
+  flash.classList.add('show');
+  setTimeout(() => flash.classList.remove('show'), 900);
+}
+
+// ── RENDER LOG TABLE ──
+function renderLog() {
+  const tbody = document.getElementById('log-body');
+  const table = document.getElementById('log-table');
+  const empty = document.getElementById('empty-log');
+
+  if (log.length === 0) {
+    table.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  table.style.display = 'table';
+  empty.style.display = 'none';
+  tbody.innerHTML = '';
+
+  // Show most recent first
+  const reversed = [...log].reverse();
+  reversed.forEach((entry, ri) => {
+    const i = log.length - 1 - ri;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-time">${entry.time}</td>
+      <td class="td-activity">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${entry.color};margin-right:8px;vertical-align:middle"></span>
+        ${entry.activity}
+        ${entry.note ? `<br><span style="font-size:0.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace">${entry.note}</span>` : ''}
+      </td>
+      <td><button class="delete-btn" onclick="deleteEntry(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function deleteEntry(i) {
+  log.splice(i, 1);
+  save();
+  renderLog();
+  renderSummary();
+}
+
+// ── RENDER SUMMARY ──
+function renderSummary() {
+  const grid = document.getElementById('summary-grid');
+  if (log.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;font-family:\'IBM Plex Mono\',monospace">No data yet</div>';
+    return;
+  }
+
+  // Count entries per activity
+  const counts = {};
+  const colors = {};
+  log.forEach(e => {
+    counts[e.activity] = (counts[e.activity] || 0) + 1;
+    colors[e.activity] = e.color;
+  });
+
+  const total = log.length;
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const max = sorted[0][1];
+
+  grid.innerHTML = '';
+  sorted.forEach(([name, count]) => {
+    const mins = count * 15;
+    const hrs = Math.floor(mins / 60);
+    const m = mins % 60;
+    const timeLabel = hrs > 0 ? `${hrs}h ${m}m` : `${m}m`;
+    const pct = Math.round((count / total) * 100);
+
+    const row = document.createElement('div');
+    row.className = 'summary-row';
+    row.innerHTML = `
+      <span class="summary-dot" style="background:${colors[name]}"></span>
+      <span class="summary-name">${name}</span>
+      <div class="summary-bar-wrap">
+        <div class="summary-bar" style="width:${pct}%;background:${colors[name]}"></div>
+      </div>
+      <span class="summary-time">${timeLabel}</span>
+    `;
+    grid.appendChild(row);
+  });
+}
+
+// ── EXPORT CSV ──
+function exportCSV() {
+  if (log.length === 0) { showFlash('Nothing to export'); return; }
+  const rows = [['Date','Slot Start','Activity','Note']];
+  log.forEach(e => rows.push([e.date, e.time, e.activity, e.note || '']));
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().slice(0,10);
+  a.download = `timelog_${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── CLEAR LOG ──
+function clearLog() {
+  if (log.length === 0) return;
+  if (!confirm('Clear all log entries for today?')) return;
+  log = [];
+  lastEntry = null;
+  localStorage.removeItem('ts_last');
+  document.getElementById('repeat-btn').disabled = true;
+  document.getElementById('repeat-label').textContent = 'No previous entry';
+  save();
+  renderLog();
+  renderSummary();
+}
+
+// ── INIT ──
+renderGrid();
+renderLog();
+renderSummary();
+
+if (lastEntry) {
+  document.getElementById('repeat-label').textContent = `Repeat: ${lastEntry}`;
+  document.getElementById('repeat-btn').disabled = false;
+  document.getElementById('repeat-btn').onclick = () =>
+    logActivity(lastEntry, getColorForActivity(lastEntry));
+}
+
+// Set notification button state based on existing permission
+if ('Notification' in window) {
+  updateNotifStatus(Notification.permission);
+} else {
+  updateNotifStatus('not-supported');
+}
+</script>
+</body>
+</html>
