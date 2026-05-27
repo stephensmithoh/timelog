@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Time Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --border: #2e3248;
+    --accent: #f0c040;
+    --accent2: #4fd1c5;
+    --text: #e8eaf0;
+    --muted: #9ba3c9;
+    --danger: #f06060;
+    --success: #60c080;
+    --warn: #f0a040;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  #clock {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── ACTIVE TASK BAR ── */
+  #active-bar {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+  }
+
+  #active-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  #active-dot.running {
+    background: var(--success);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  #active-task-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  #active-duration {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  #stop-btn {
+    padding: 6px 12px;
+    background: none;
+    border: 1.5px solid var(--danger);
+    border-radius: 4px;
+    color: var(--danger);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+  #stop-btn:hover { background: var(--danger); color: #111; }
+
+  main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px 16px 100px;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  section { margin-bottom: 22px; }
+
+  /* ── CATEGORY GRID ── */
+  #activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .activity-btn {
+    padding: 13px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .activity-btn:active { transform: scale(0.97); }
+  .activity-btn:hover { border-color: var(--accent2); background: var(--surface2); }
+  .activity-btn.active-task {
+    border-color: var(--success);
+    background: rgba(96, 192, 128, 0.08);
+  }
+  .activity-btn .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── MANUAL / CUSTOM ── */
+  #custom-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  #custom-input {
+    flex: 1;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+  }
+  #custom-input:focus { border-color: var(--accent2); }
+  #custom-input::placeholder { color: var(--muted); }
+
+  #custom-log-btn {
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #custom-log-btn:hover { border-color: var(--accent2); }
+
+  /* ── MANAGE CATEGORIES ── */
+  #manage-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    padding: 4px 0;
+    text-decoration: underline;
+    display: block;
+    margin-bottom: 10px;
+  }
+  #manage-toggle:hover { color: var(--accent); }
+
+  #manage-section { display: none; }
+  #manage-section.open { display: block; }
+
+  #cat-list { margin-bottom: 10px; }
+
+  .cat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cat-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cat-name-text { flex: 1; font-size: 0.88rem; }
+  .cat-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+  .cat-del:hover { color: var(--danger); }
+
+  #add-cat-row { display: flex; gap: 8px; margin-top: 8px; }
+  #new-cat-input {
+    flex: 1; padding: 10px 12px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem; outline: none;
+  }
+  #new-cat-input:focus { border-color: var(--accent2); }
+  #new-cat-input::placeholder { color: var(--muted); }
+  #add-cat-btn {
+    padding: 10px 14px; background: var(--accent2); color: #111;
+    border: none; border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 0.82rem; cursor: pointer;
+  }
+
+  /* ── BACKFILL ── */
+  #backfill-section { display: none; }
+  #backfill-section.open { display: block; }
+
+  #backfill-toggle {
+    background: none; border: none; color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    cursor: pointer; padding: 4px 0; text-decoration: underline; display: block; margin-bottom: 10px;
+  }
+  #backfill-toggle:hover { color: var(--warn); }
+
+  .backfill-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+
+  .bf-input {
+    padding: 9px 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    outline: none;
+    width: 100%;
+  }
+  .bf-input:focus { border-color: var(--warn); }
+
+  .bf-add-btn {
+    padding: 9px 14px;
+    background: var(--warn);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .bf-del-btn {
+    padding: 9px 10px;
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .bf-del-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  #bf-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  /* ── TABS ── */
+  #report-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .tab-btn {
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn.active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── LOG TABLE ── */
+  #log-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    text-align: left;
+    padding: 9px 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.62rem;
+    position: sticky;
+    top: 0;
+  }
+  td {
+    padding: 9px 10px;
+    border-top: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:hover td { background: var(--surface2); }
+  .td-time { color: var(--muted); white-space: nowrap; }
+  .td-dur { color: var(--accent); white-space: nowrap; text-align: right; }
+  .td-act { font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; }
+  .delete-btn {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 0.9rem; padding: 0 4px;
+  }
+  .delete-btn:hover { color: var(--danger); }
+
+  #empty-log {
+    padding: 24px; text-align: center;
+    color: var(--muted); font-size: 0.82rem;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── SUMMARY ── */
+  #summary-grid { display: grid; gap: 8px; }
+
+  .summary-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px;
+  }
+  .summary-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .summary-name { flex: 1; font-size: 0.88rem; font-weight: 500; }
+  .summary-bar-wrap { width: 70px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .summary-bar { height: 100%; border-radius: 3px; }
+  .summary-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; color: var(--accent); font-weight: 600; min-width: 55px; text-align: right; }
+
+  /* ── ACTIONS ── */
+  #actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .action-btn {
+    flex: 1; min-width: 110px; padding: 11px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 6px; color: var(--text);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem;
+    font-weight: 600; letter-spacing: 0.05em; cursor: pointer; text-align: center;
+    transition: border-color 0.15s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* notif btn */
+  #notif-btn { flex: none; width: 100%; margin-top: 8px; }
+
+  /* ── FLASH ── */
+  #flash {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    background: var(--success); color: #111;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+    font-size: 0.9rem; padding: 12px 24px; border-radius: 6px;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.2s, transform 0.2s; z-index: 999;
+    text-align: center; max-width: 280px;
+  }
+  #flash.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⏱ Time Log</h1>
+  <div id="clock">00:00:00</div>
+</header>
+
+<!-- Active task bar -->
+<div id="active-bar">
+  <div id="active-dot"></div>
+  <div id="active-task-name" style="color:var(--muted);font-style:italic">No task running — tap to start</div>
+  <div id="active-duration"></div>
+  <button id="stop-btn" style="display:none" onclick="stopTask()">■ STOP</button>
+</div>
+
+<div id="flash"></div>
+
+<main>
+
+  <!-- ACTIVITY BUTTONS -->
+  <section>
+    <div class="section-label">Start / Switch Task</div>
+    <button id="manage-toggle" onclick="toggleManage()">✎ manage categories</button>
+    <div id="manage-section">
+      <div id="cat-list"></div>
+      <div id="add-cat-row">
+        <input id="new-cat-input" type="text" placeholder="New category…" maxlength="40">
+        <button id="add-cat-btn" onclick="addCategory()">+ Add</button>
+      </div>
+      <br>
+    </div>
+    <div id="activity-grid"></div>
+    <div id="custom-row">
+      <input id="custom-input" type="text" placeholder="Other / free text…" maxlength="60">
+      <button id="custom-log-btn" onclick="startCustom()">▶ Start</button>
+    </div>
+  </section>
+
+  <!-- BACKFILL -->
+  <section>
+    <button id="backfill-toggle" onclick="toggleBackfill()">+ backfill earlier tasks</button>
+    <div id="backfill-section">
+      <div id="bf-note">Add tasks you did before opening the app. Use HH:MM format.</div>
+      <div id="bf-rows"></div>
+      <button class="bf-add-btn" onclick="addBfRow()" style="margin-top:4px">+ Add row</button>
+      <br><br>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section>
+    <div class="section-label">Reports</div>
+    <div id="report-tabs">
+      <button class="tab-btn active" onclick="setTab('continuous')">Continuous</button>
+      <button class="tab-btn" onclick="setTab('quarters')">15-min Snapshot</button>
+      <button class="tab-btn" onclick="setTab('summary')">Summary</button>
+    </div>
+
+    <div id="tab-continuous">
+      <div id="log-wrap">
+        <div id="empty-log">No entries yet — tap a task to start</div>
+        <table id="log-table" style="display:none">
+          <thead><tr><th>Start</th><th>Activity</th><th>Duration</th><th></th></tr></thead>
+          <tbody id="log-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-quarters" style="display:none">
+      <div id="log-wrap-q">
+        <div id="empty-log-q" style="padding:24px;text-align:center;color:var(--muted);font-size:0.82rem;font-family:'IBM Plex Mono',monospace">No data yet</div>
+        <table id="log-table-q" style="display:none">
+          <thead><tr><th>Quarter</th><th>Activity</th></tr></thead>
+          <tbody id="log-body-q"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-summary" style="display:none">
+      <div id="summary-grid"><div style="color:var(--muted);font-size:0.82rem;font-family:'IBM Plex Mono',monospace">No data yet</div></div>
+    </div>
+  </section>
+
+  <!-- ACTIONS -->
+  <section>
+    <div class="section-label">Actions</div>
+    <div id="actions">
+      <button class="action-btn" onclick="exportCSV()">↓ Export CSV</button>
+      <button class="action-btn" id="clear-btn" onclick="clearLog()">✕ Clear Log</button>
+    </div>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+      <button class="action-btn" id="notif-btn" onclick="requestNotifPermission()">🔔 Enable Notifications</button>
+      <div id="notif-info" style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--muted);padding:0 2px">Enable to get quarter-hour alerts when on other tabs.</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── DATA ──
+const COLORS = [
+  '#f0c040','#4fd1c5','#f06090','#80c0ff','#a0e080',
+  '#e0a0f0','#f0a060','#60d0e0','#f08080','#b0b0f0'
+];
+
+let categories = JSON.parse(localStorage.getItem('ts_cats') || 'null') || [
+  'Site Visit / Fieldwork',
+  'Report Writing',
+  'Travel',
+  'Client Calls',
+  'Admin / Email',
+  'Quoting / Proposals',
+  'Meetings',
+  'CPD / Training'
+];
+
+// log entries: { start: ISO string, end: ISO string|null, activity, color }
+let log = JSON.parse(localStorage.getItem('ts_log2') || '[]');
+let activeTask = JSON.parse(localStorage.getItem('ts_active') || 'null');
+let currentTab = 'continuous';
+let notifGranted = false;
+let durationInterval = null;
+
+function save() {
+  localStorage.setItem('ts_cats', JSON.stringify(categories));
+  localStorage.setItem('ts_log2', JSON.stringify(log));
+  localStorage.setItem('ts_active', JSON.stringify(activeTask));
+}
+
+// ── CLOCK ──
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toTimeString().slice(0,8);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── ACTIVE TASK DISPLAY ──
+function updateActiveBar() {
+  const dot = document.getElementById('active-dot');
+  const name = document.getElementById('active-task-name');
+  const dur = document.getElementById('active-duration');
+  const stopBtn = document.getElementById('stop-btn');
+
+  if (activeTask) {
+    dot.className = 'running';
+    dot.style.background = activeTask.color;
+    name.textContent = activeTask.activity;
+    name.style.color = 'var(--text)';
+    name.style.fontStyle = 'normal';
+    stopBtn.style.display = 'block';
+    const elapsed = Date.now() - new Date(activeTask.start).getTime();
+    dur.textContent = fmtDuration(elapsed);
+  } else {
+    dot.className = '';
+    dot.style.background = 'var(--muted)';
+    name.textContent = 'No task running — tap to start';
+    name.style.color = 'var(--muted)';
+    name.style.fontStyle = 'italic';
+    stopBtn.style.display = 'none';
+    dur.textContent = '';
+  }
+
+  // Highlight active button
+  document.querySelectorAll('.activity-btn').forEach(btn => {
+    btn.classList.toggle('active-task',
+      activeTask && btn.dataset.name === activeTask.activity);
+  });
+}
+
+// Update duration every second while task running
+function startDurationTick() {
+  clearInterval(durationInterval);
+  durationInterval = setInterval(() => {
+    if (activeTask) {
+      const elapsed = Date.now() - new Date(activeTask.start).getTime();
+      document.getElementById('active-duration').textContent = fmtDuration(elapsed);
+    }
+  }, 1000);
+}
+
+// ── START A TASK ──
+function startTask(name, color) {
+  const now = new Date();
+
+  // Close any running task
+  if (activeTask) {
+    log.push({ ...activeTask, end: now.toISOString() });
+  }
+
+  activeTask = { activity: name, color: color || '#aaa', start: now.toISOString(), end: null };
+  save();
+  updateActiveBar();
+  startDurationTick();
+  renderAll();
+  showFlash(name);
+}
+
+function stopTask() {
+  if (!activeTask) return;
+  const now = new Date();
+  log.push({ ...activeTask, end: now.toISOString() });
+  activeTask = null;
+  save();
+  updateActiveBar();
+  renderAll();
+}
+
+function startCustom() {
+  const input = document.getElementById('custom-input');
+  const val = input.value.trim();
+  if (!val) return;
+  startTask(val, '#aaaaaa');
+  input.value = '';
+}
+
+document.getElementById('custom-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startCustom();
+});
+
+// ── CATEGORIES ──
+function getColor(name) {
+  const i = categories.indexOf(name);
+  return i >= 0 ? COLORS[i % COLORS.length] : '#aaa';
+}
+
+function renderGrid() {
+  const grid = document.getElementById('activity-grid');
+  grid.innerHTML = '';
+  categories.forEach((cat, i) => {
+    const color = COLORS[i % COLORS.length];
+    const btn = document.createElement('button');
+    btn.className = 'activity-btn';
+    btn.dataset.name = cat;
+    btn.innerHTML = `<span class="dot" style="background:${color}"></span>${cat}`;
+    btn.onclick = () => startTask(cat, color);
+    if (activeTask && activeTask.activity === cat) btn.classList.add('active-task');
+    grid.appendChild(btn);
+  });
+}
+
+function renderCatList() {
+  const list = document.getElementById('cat-list');
+  list.innerHTML = '';
+  categories.forEach((cat, i) => {
+    const color = COLORS[i % COLORS.length];
+    const row = document.createElement('div');
+    row.className = 'cat-item';
+    row.innerHTML = `
+      <span class="cat-color-dot" style="background:${color}"></span>
+      <span class="cat-name-text">${cat}</span>
+      <button class="cat-del" onclick="deleteCategory(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function toggleManage() {
+  const sec = document.getElementById('manage-section');
+  const btn = document.getElementById('manage-toggle');
+  const open = sec.classList.toggle('open');
+  btn.textContent = open ? '✕ close' : '✎ manage categories';
+  if (open) renderCatList();
+}
+
+function addCategory() {
+  const input = document.getElementById('new-cat-input');
+  const name = input.value.trim();
+  if (!name || categories.includes(name)) { input.value = ''; return; }
+  categories.push(name);
+  input.value = '';
+  save();
+  renderGrid();
+  renderCatList();
+}
+
+function deleteCategory(i) {
+  if (categories.length <= 1) return;
+  categories.splice(i, 1);
+  save();
+  renderGrid();
+  renderCatList();
+}
+
+document.getElementById('new-cat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCategory();
+});
+
+// ── BACKFILL ──
+function toggleBackfill() {
+  const sec = document.getElementById('backfill-section');
+  const btn = document.getElementById('backfill-toggle');
+  const open = sec.classList.toggle('open');
+  btn.textContent = open ? '✕ close backfill' : '+ backfill earlier tasks';
+  if (open && document.getElementById('bf-rows').children.length === 0) addBfRow();
+}
+
+function addBfRow() {
+  const container = document.getElementById('bf-rows');
+  const row = document.createElement('div');
+  row.className = 'backfill-row';
+  row.innerHTML = `
+    <input class="bf-input" type="time" placeholder="Start HH:MM">
+    <input class="bf-input" type="text" placeholder="Activity" maxlength="60">
+    <button class="bf-add-btn" onclick="commitBfRow(this)">✓ Add</button>
+    <button class="bf-del-btn" onclick="this.parentElement.remove()">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function commitBfRow(btn) {
+  const row = btn.parentElement;
+  const inputs = row.querySelectorAll('input');
+  const timeVal = inputs[0].value.trim();
+  const actVal = inputs[1].value.trim();
+  if (!timeVal || !actVal) { showFlash('Fill in time & activity'); return; }
+
+  const today = new Date().toISOString().slice(0,10);
+  const startISO = `${today}T${timeVal}:00`;
+  const startDate = new Date(startISO);
+  if (isNaN(startDate)) { showFlash('Invalid time'); return; }
+
+  // Find where to insert (sorted by start)
+  const color = getColor(actVal);
+  const entry = { activity: actVal, color, start: startISO, end: null, backfill: true };
+
+  // Auto-set end time: next log entry or activeTask after this start
+  const allSorted = [...log];
+  if (activeTask) allSorted.push({ ...activeTask });
+  allSorted.sort((a,b) => new Date(a.start) - new Date(b.start));
+
+  const next = allSorted.find(e => new Date(e.start) > startDate);
+  if (next) entry.end = next.start;
+  else if (activeTask && new Date(activeTask.start) > startDate) entry.end = activeTask.start;
+
+  // Also set end of any entry just before this
+  const prev = [...allSorted].reverse().find(e => new Date(e.start) < startDate);
+  if (prev && !prev.end && prev !== activeTask) prev.end = startISO;
+
+  log.push(entry);
+  log.sort((a,b) => new Date(a.start) - new Date(b.start));
+  save();
+  renderAll();
+  row.remove();
+  showFlash(`Added: ${actVal}`);
+}
+
+// ── HELPERS ──
+function fmtDuration(ms) {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  if (m > 0) return `${m}m ${String(s).padStart(2,'0')}s`;
+  return `${s}s`;
+}
+
+function fmtTime(d) { return new Date(d).toTimeString().slice(0,5); }
+
+function getEntryDuration(entry) {
+  const end = entry.end ? new Date(entry.end) : new Date();
+  return new Date(end) - new Date(entry.start);
+}
+
+// ── RENDER ──
+function renderAll() {
+  renderContinuous();
+  renderQuarters();
+  renderSummary();
+}
+
+function allEntries() {
+  // combine log + activeTask for display
+  const all = [...log];
+  if (activeTask) all.push({ ...activeTask, end: null });
+  return all.sort((a,b) => new Date(a.start) - new Date(b.start));
+}
+
+function renderContinuous() {
+  const entries = allEntries();
+  const tbody = document.getElementById('log-body');
+  const table = document.getElementById('log-table');
+  const empty = document.getElementById('empty-log');
+
+  if (entries.length === 0) {
+    table.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  table.style.display = 'table';
+  empty.style.display = 'none';
+  tbody.innerHTML = '';
+
+  [...entries].reverse().forEach((entry, ri) => {
+    const realIdx = entries.length - 1 - ri;
+    const dur = fmtDuration(getEntryDuration(entry));
+    const isActive = !entry.end;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-time">${fmtTime(entry.start)}</td>
+      <td class="td-act">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${entry.color};margin-right:8px;vertical-align:middle"></span>
+        ${entry.activity}${isActive ? ' <span style="color:var(--success);font-size:0.7rem">●</span>' : ''}
+        ${entry.backfill ? ' <span style="color:var(--warn);font-size:0.68rem;font-family:\'IBM Plex Mono\',monospace">[backfill]</span>' : ''}
+      </td>
+      <td class="td-dur">${isActive ? '<span style="color:var(--success)">running</span>' : dur}</td>
+      <td>${isActive ? '' : `<button class="delete-btn" onclick="deleteEntry(${realIdx})">✕</button>`}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderQuarters() {
+  const entries = allEntries();
+  const tbody = document.getElementById('log-body-q');
+  const table = document.getElementById('log-table-q');
+  const empty = document.getElementById('empty-log-q');
+
+  if (entries.length === 0) {
+    table.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  // Find day start (earliest entry, rounded back to last hour)
+  const earliest = new Date(entries[0].start);
+  const dayStart = new Date(earliest);
+  dayStart.setMinutes(Math.floor(earliest.getMinutes() / 60) * 60, 0, 0); // round to hour
+
+  // Generate quarter points from dayStart to now
+  const now = new Date();
+  const quarters = [];
+  const cursor = new Date(dayStart);
+  while (cursor <= now) {
+    quarters.push(new Date(cursor));
+    cursor.setMinutes(cursor.getMinutes() + 15);
+  }
+
+  // For each quarter, find what task was running at that moment
+  const rows = quarters.map(q => {
+    const active = entries.find(e => {
+      const s = new Date(e.start);
+      const en = e.end ? new Date(e.end) : new Date();
+      return s <= q && q < en;
+    });
+    return { time: q, entry: active || null };
+  }).filter(r => r.entry); // only show quarters where something was logged
+
+  if (rows.length === 0) {
+    table.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  table.style.display = 'table';
+  empty.style.display = 'none';
+  tbody.innerHTML = '';
+
+  [...rows].reverse().forEach(({ time, entry }) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-time">${fmtTime(time)}</td>
+      <td class="td-act">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${entry.color};margin-right:8px;vertical-align:middle"></span>
+        ${entry.activity}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSummary() {
+  const entries = allEntries();
+  const grid = document.getElementById('summary-grid');
+
+  if (entries.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;font-family:\'IBM Plex Mono\',monospace">No data yet</div>';
+    return;
+  }
+
+  const totals = {};
+  const colors = {};
+  entries.forEach(e => {
+    const ms = getEntryDuration(e);
+    totals[e.activity] = (totals[e.activity] || 0) + ms;
+    colors[e.activity] = e.color;
+  });
+
+  const totalMs = Object.values(totals).reduce((a,b) => a+b, 0);
+  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
+
+  grid.innerHTML = '';
+  sorted.forEach(([name, ms]) => {
+    const pct = Math.round((ms / totalMs) * 100);
+    const row = document.createElement('div');
+    row.className = 'summary-row';
+    row.innerHTML = `
+      <span class="summary-dot" style="background:${colors[name]}"></span>
+      <span class="summary-name">${name}</span>
+      <div class="summary-bar-wrap"><div class="summary-bar" style="width:${pct}%;background:${colors[name]}"></div></div>
+      <span class="summary-time">${fmtDuration(ms)}</span>
+    `;
+    grid.appendChild(row);
+  });
+}
+
+function deleteEntry(i) {
+  log.splice(i, 1);
+  save();
+  renderAll();
+}
+
+// ── TABS ──
+function setTab(name) {
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-continuous').style.display = name === 'continuous' ? 'block' : 'none';
+  document.getElementById('tab-quarters').style.display = name === 'quarters' ? 'block' : 'none';
+  document.getElementById('tab-summary').style.display = name === 'summary' ? 'block' : 'none';
+}
+
+// ── NOTIFICATIONS ──
+let notifGrantedFlag = false;
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { updateNotifStatus('not-supported'); return; }
+  if (Notification.permission === 'granted') { notifGrantedFlag = true; updateNotifStatus('granted'); return; }
+  if (Notification.permission === 'denied') { updateNotifStatus('denied'); return; }
+  const result = await Notification.requestPermission();
+  notifGrantedFlag = result === 'granted';
+  updateNotifStatus(result);
+}
+
+function updateNotifStatus(status) {
+  const btn = document.getElementById('notif-btn');
+  const info = document.getElementById('notif-info');
+  if (status === 'granted') {
+    btn.textContent = '🔔 Notifications ON';
+    btn.style.borderColor = 'var(--success)'; btn.style.color = 'var(--success)';
+    info.textContent = 'Tap the notification to jump back to this tab.';
+  } else if (status === 'denied') {
+    btn.textContent = '🔕 Notifications blocked';
+    btn.style.borderColor = 'var(--danger)'; btn.style.color = 'var(--danger)';
+    info.textContent = 'Blocked in browser settings.';
+  } else if (status === 'not-supported') {
+    btn.textContent = '🔕 Not supported'; btn.style.color = 'var(--muted)';
+  }
+}
+
+function msUntilNextQuarter() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setMinutes(Math.ceil((now.getMinutes() * 60 + now.getSeconds() + 1) / (15 * 60)) * 15, 0, 0);
+  return next - now;
+}
+
+function scheduleReminder() {
+  setTimeout(() => { fireReminder(); scheduleReminder(); }, msUntilNextQuarter());
+}
+
+function fireReminder() {
+  const now = new Date();
+  const timeLabel = now.toTimeString().slice(0,5);
+  if (navigator.vibrate) navigator.vibrate([200,100,200]);
+  if (notifGrantedFlag && Notification.permission === 'granted') {
+    const n = new Notification('⏱ Time Log', {
+      body: `${timeLabel} — what are you working on?`,
+      tag: 'timelog', renotify: true
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  }
+}
+
+scheduleReminder();
+if ('Notification' in window && Notification.permission === 'granted') {
+  notifGrantedFlag = true;
+  updateNotifStatus('granted');
+} else if ('Notification' in window) {
+  updateNotifStatus(Notification.permission);
+} else {
+  updateNotifStatus('not-supported');
+}
+
+// ── FLASH ──
+function showFlash(msg) {
+  const f = document.getElementById('flash');
+  f.textContent = '✓ ' + msg;
+  f.classList.add('show');
+  setTimeout(() => f.classList.remove('show'), 900);
+}
+
+// ── EXPORT ──
+function exportCSV() {
+  const entries = allEntries();
+  if (entries.length === 0) { showFlash('Nothing to export'); return; }
+  const rows = [['Date','Start','End','Duration (mins)','Activity']];
+  entries.forEach(e => {
+    const end = e.end ? new Date(e.end) : new Date();
+    const mins = Math.round((end - new Date(e.start)) / 60000);
+    rows.push([
+      new Date(e.start).toLocaleDateString('en-GB'),
+      fmtTime(e.start),
+      e.end ? fmtTime(e.end) : 'running',
+      mins,
+      e.activity
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `timelog_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── CLEAR ──
+function clearLog() {
+  if (log.length === 0 && !activeTask) return;
+  if (!confirm('Clear all entries?')) return;
+  log = []; activeTask = null;
+  save(); updateActiveBar(); renderAll();
+}
+
+// ── INIT ──
+renderGrid();
+renderAll();
+updateActiveBar();
+if (activeTask) startDurationTick();
+</script>
+</body>
+</html>
